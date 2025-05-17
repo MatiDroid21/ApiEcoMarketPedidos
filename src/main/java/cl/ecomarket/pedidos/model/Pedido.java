@@ -5,6 +5,9 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 
 @Entity
 @Table(name = "PEDIDOS")
@@ -41,4 +44,8 @@ public class Pedido {
 
     @Column(name = "METODO_PAGO")
     private String metodoPago;
+
+@OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL)
+@JsonManagedReference
+private List<DetallePedido> detalles;
 }
