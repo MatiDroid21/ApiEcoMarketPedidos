@@ -33,7 +33,8 @@ public class PedidoController {
 
     @PostMapping
     public ResponseEntity<Pedido> crearPedido(@RequestBody PedidoDTO pedidoDTO) {
-        Pedido pedido = new Pedido();
+        try{
+            Pedido pedido = new Pedido();
         pedido.setClienteId(pedidoDTO.getClienteId());
         pedido.setTiendaId(pedidoDTO.getTiendaId());
         pedido.setEmpleadoId(pedidoDTO.getEmpleadoId());
@@ -49,7 +50,7 @@ public class PedidoController {
             detalle.setProductoId(detalleDTO.getProductoId());
             detalle.setCantidad(detalleDTO.getCantidad());
             detalle.setPrecioUnitario(detalleDTO.getPrecioUnitario());
-            detalle.setPedido(pedido); // pa’ que se asocie al pedido
+            detalle.setPedido(pedido); // esto es para asociar el pedido al detalle.
             return detalle;
         }).collect(Collectors.toList());
 
@@ -57,6 +58,9 @@ public class PedidoController {
 
         Pedido pedidoGuardado = pedidoService.guardarPedido(pedido);
         return ResponseEntity.ok(pedidoGuardado);
+        }catch(Exception ex){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
 
     @GetMapping
@@ -79,7 +83,7 @@ public class PedidoController {
             }
             return ResponseEntity.ok(pedidoActualizado);
         } catch (Exception e) {
-            // Manejo general de errores, podés personalizarlo
+            // Manejo general de errores
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
