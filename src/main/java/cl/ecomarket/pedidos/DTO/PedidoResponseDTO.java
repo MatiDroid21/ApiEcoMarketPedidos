@@ -1,13 +1,15 @@
 package cl.ecomarket.pedidos.DTO;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import lombok.Data;
 
 // PedidoDTO.java
 @Data
-public class PedidoDTO {
+public class PedidoResponseDTO {
+    private Long id;
     private Long clienteId;
     private Long tiendaId;
     private Long empleadoId;
@@ -16,12 +18,16 @@ public class PedidoDTO {
     private BigDecimal subtotal;
     private BigDecimal descuento;
     private BigDecimal total;
-    private List<DetalleDTO> detalles;
+    private LocalDateTime fechaPedido;
+    private List<DetalleResponseDTO> detalles;
 
     @Data
-    public static class DetalleDTO {
+    public static class DetalleResponseDTO {
         private Long productoId;
+        private String nombre;
         private int cantidad;
         private BigDecimal precioUnitario;
     }
 }
+
+

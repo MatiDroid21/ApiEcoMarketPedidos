@@ -1,8 +1,11 @@
 package cl.ecomarket.pedidos.controller;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,7 +21,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import cl.ecomarket.pedidos.DTO.PedidoDTO;
+import cl.ecomarket.pedidos.DTO.PedidoResponseDTO;
+import cl.ecomarket.pedidos.DTO.ProductoDTO;
 import cl.ecomarket.pedidos.model.DetallePedido;
 import cl.ecomarket.pedidos.model.Pedido;
 import cl.ecomarket.pedidos.service.PedidoService;
@@ -32,45 +36,70 @@ public class PedidoController {
     private PedidoService pedidoService;
 
     @PostMapping
-    public ResponseEntity<Pedido> crearPedido(@RequestBody PedidoDTO pedidoDTO) {
-        try{
+    public ResponseEntity<?> crearPedido(@RequestBody PedidoResponseDTO pedidoDTO) {
+        try {
             Pedido pedido = new Pedido();
-        pedido.setClienteId(pedidoDTO.getClienteId());
-        pedido.setTiendaId(pedidoDTO.getTiendaId());
-        pedido.setEmpleadoId(pedidoDTO.getEmpleadoId());
-        pedido.setEstado(pedidoDTO.getEstado());
-        pedido.setMetodoPago(pedidoDTO.getMetodoPago());
-        pedido.setSubtotal(pedidoDTO.getSubtotal());
-        pedido.setDescuento(pedidoDTO.getDescuento());
-        pedido.setTotal(pedidoDTO.getTotal());
-        pedido.setFechaPedido(LocalDateTime.now());
+            pedido.setClienteId(pedidoDTO.getClienteId());
+            pedido.setTiendaId(pedidoDTO.getTiendaId());
+            pedido.setEmpleadoId(pedidoDTO.getEmpleadoId());
+            pedido.setEstado(pedidoDTO.getEstado());
+            pedido.setMetodoPago(pedidoDTO.getMetodoPago());
+            pedido.setFechaPedido(LocalDateTime.now());
 
-        List<DetallePedido> detalles = pedidoDTO.getDetalles().stream().map(detalleDTO -> {
-            DetallePedido detalle = new DetallePedido();
-            detalle.setProductoId(detalleDTO.getProductoId());
-            detalle.setCantidad(detalleDTO.getCantidad());
-            detalle.setPrecioUnitario(detalleDTO.getPrecioUnitario());
-            detalle.setPedido(pedido); // esto es para asociar el pedido al detalle.
-            return detalle;
-        }).collect(Collectors.toList());
+            AtomicReference<BigDecimal> subtotal = new AtomicReference<>(BigDecimal.ZERO);
 
-        pedido.setDetalles(detalles);
+            List<DetallePedido> detalles = new ArrayList<>();
 
-        Pedido pedidoGuardado = pedidoService.guardarPedido(pedido);
-        return ResponseEntity.ok(pedidoGuardado);
-        }catch(Exception ex){
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            for (PedidoResponseDTO.DetalleResponseDTO detalleDTO : pedidoDTO.getDetalles()) {
+                ProductoDTO producto = pedidoService.obtenerProductoPorId(detalleDTO.getProductoId());
+
+                if (producto == null) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Producto con id " + detalleDTO.getProductoId() + " no encontrado.");
+                }
+
+                DetallePedido detalle = new DetallePedido();
+                detalle.setProductoId(detalleDTO.getProductoId());
+                detalle.setCantidad(detalleDTO.getCantidad());
+                detalle.setPrecioUnitario(producto.getPrecio());
+                detalle.setPedido(pedido);
+
+                BigDecimal totalPorProducto = producto.getPrecio()
+                        .multiply(BigDecimal.valueOf(detalleDTO.getCantidad()));
+                subtotal.updateAndGet(v -> v.add(totalPorProducto));
+
+                detalles.add(detalle);
+            }
+
+            pedido.setSubtotal(subtotal.get());
+            pedido.setDescuento(pedidoDTO.getDescuento() != null ? pedidoDTO.getDescuento() : BigDecimal.ZERO);
+            pedido.setTotal(subtotal.get().subtract(pedido.getDescuento()));
+            pedido.setDetalles(detalles);
+
+            Pedido pedidoGuardado = pedidoService.guardarPedido(pedido);
+            return ResponseEntity.ok(pedidoGuardado);
+
+        } catch (Exception ex) {
+            ex.printStackTrace(); // Para debug
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Ocurrió un error interno al procesar la solicitud. " + ex.getMessage());
         }
     }
 
     @GetMapping
-    public List<Pedido> obtenerTodos() {
-        return pedidoService.obtenerTodos();
-    }
+ public List<PedidoResponseDTO> obtenerTodos() {
+    return pedidoService.obtenerTodosConNombres();
+}
 
     @GetMapping("/{id}")
-    public Optional<Pedido> obtenerPorId(@PathVariable Long id) {
-        return pedidoService.obtenerPorId(id);
+    public ResponseEntity<?> obtenerPorId(@PathVariable Long id) {
+        Optional<Pedido> pedidoOpt = pedidoService.obtenerPorId(id);
+        if (pedidoOpt.isPresent()) {
+            PedidoResponseDTO responseDTO = pedidoService.mapToResponseDTO(pedidoOpt.get());
+            return ResponseEntity.ok(responseDTO);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
     }
 
     @PutMapping("/{id}")

@@ -20,32 +20,32 @@ public class Pedido {
 
     @Column(name = "CLIENTE_ID", nullable = false)
     private Long clienteId;
-
-    @Column(name = "TIENDA_ID")
+    
+    @Column(name = "TIENDA_ID", nullable = false)
     private Long tiendaId;
 
-    @Column(name = "EMPLEADO_ID")
+    @Column(name = "EMPLEADO_ID", nullable = false)
     private Long empleadoId;
 
-    @Column(name = "FECHA_PEDIDO")
+    @Column(name = "FECHA_PEDIDO", nullable = false)
     private LocalDateTime fechaPedido;
 
-    @Column(name = "ESTADO")
+    @Column(name = "ESTADO", nullable = false)
     private String estado;
 
     @Column(name = "SUBTOTAL", nullable = false)
     private BigDecimal subtotal;
 
-    @Column(name = "DESCUENTO")
+    @Column(name = "DESCUENTO", nullable = false)
     private BigDecimal descuento;
 
     @Column(name = "TOTAL", nullable = false)
     private BigDecimal total;
 
-    @Column(name = "METODO_PAGO")
+    @Column(name = "METODO_PAGO", nullable = false)
     private String metodoPago;
 
-@OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL)
-@JsonManagedReference
-private List<DetallePedido> detalles;
+    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL)
+    @JsonManagedReference
+    private List<DetallePedido> detalles;
 }
